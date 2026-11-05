@@ -1,0 +1,145 @@
+import { useState, useEffect } from 'react';
+
+const STORAGE_KEY = 'speed4you_dismissed_playback_notice';
+
+const NOTICE_TEXT = (
+  <>
+    অনেক ভিডিওর অডিও ফরম্যাট (AC3/5.1) ব্রাউজারে সরাসরি চলে না। সাউন্ড বা প্লেব্যাক সমস্যা হলে ফাইলটি <strong>Download</strong> করে <strong>VLC Player</strong> অথবা <strong>MX Player</strong> দিয়ে উপভোগ করুন।
+  </>
+);
+
+const marqueeCss = `
+  @keyframes s4y-notice-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .s4y-notice-track {
+    display: inline-flex; align-items: center; white-space: nowrap; width: max-content;
+    animation: s4y-notice-marquee 28s linear infinite; will-change: transform;
+  }
+  .s4y-notice-viewport:hover .s4y-notice-track { animation-play-state: paused; }
+  @media (prefers-reduced-motion: reduce) { .s4y-notice-track { animation: none; } }
+`;
+
+export default function PlaybackNoticeBanner() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    try {
+      const dismissed = sessionStorage.getItem(STORAGE_KEY);
+      if (!dismissed) {
+        setVisible(true);
+      }
+    } catch {
+      setVisible(true);
+    }
+  }, []);
+
+  const handleDismiss = () => {
+    setVisible(false);
+    try {
+      sessionStorage.setItem(STORAGE_KEY, 'true');
+    } catch {
+      // ignore
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div style={bannerStyles.wrap} role="region" aria-label="Playback Notice">
+      <style>{marqueeCss}</style>
+      <div style={bannerStyles.inner}>
+        <div style={bannerStyles.content}>
+          <span style={bannerStyles.badge}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '4px', verticalAlign: '-2px' }}>
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+            </svg>
+            প্লেব্যাক নোটিশ
+          </span>
+          <div className="s4y-notice-viewport" style={bannerStyles.viewport}>
+            <div className="s4y-notice-track">
+              <span style={bannerStyles.text}>{NOTICE_TEXT}</span>
+              <span style={bannerStyles.text} aria-hidden="true">{NOTICE_TEXT}</span>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={handleDismiss}
+          style={bannerStyles.closeBtn}
+          title="নোটিশ বন্ধ করুন"
+          aria-label="Close notice"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const bannerStyles = {
+  wrap: {
+    background: 'linear-gradient(90deg, rgba(20, 16, 12, 0.96) 0%, rgba(28, 20, 14, 0.96) 50%, rgba(20, 16, 12, 0.96) 100%)',
+    borderBottom: '1px solid rgba(255, 102, 0, 0.35)',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 119, 0, 0.2)',
+    position: 'relative',
+    zIndex: 990,
+  },
+  inner: {
+    maxWidth: '1360px',
+    margin: '0 auto',
+    padding: '9px 16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+  },
+  content: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flex: 1,
+    minWidth: 0,
+    fontSize: '0.86rem',
+    color: '#ffe5cc',
+    lineHeight: '1.45',
+  },
+  badge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '3px 9px',
+    borderRadius: '6px',
+    background: 'rgba(255, 102, 0, 0.18)',
+    border: '1px solid rgba(255, 119, 0, 0.5)',
+    boxShadow: '0 2px 8px rgba(255, 102, 0, 0.25)',
+    color: '#ff9933',
+    fontWeight: '800',
+    fontSize: '0.75rem',
+    letterSpacing: '0.02em',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  viewport: {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    maskImage: 'linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%)',
+    WebkitMaskImage: 'linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%)',
+  },
+  text: {
+    paddingRight: '64px',
+  },
+  closeBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: 'rgba(255, 255, 255, 0.6)',
+    cursor: 'pointer',
+    padding: '6px',
+    borderRadius: '6px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    transition: 'color 150ms ease, background 150ms ease',
+  },
+};

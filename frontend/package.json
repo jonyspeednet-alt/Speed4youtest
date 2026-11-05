@@ -1,0 +1,52 @@
+{
+  "name": "isp-entertainment-portal",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:android": "set VITE_API_URL=https://speed4you.net/portal-api&& vite build",
+    "build:apk": "powershell -ExecutionPolicy Bypass -File scripts/build-apk.ps1",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "@tanstack/react-query": "^5.51.1",
+    "@tanstack/react-query-devtools": "^5.51.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.2.1",
+    "react-router-dom": "^6.24.1",
+    "react-window": "^1.8.10"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-legacy": "^4.1.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "abortcontroller-polyfill": "^1.7.8",
+    "autoprefixer": "^10.5.4",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.3",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.7",
+    "postcss": "^8.5.25",
+    "terser": "^5.46.2",
+    "vite": "^4.5.3"
+  },
+  "browserslist": [
+    "> 0.3%",
+    "last 4 versions",
+    "not dead",
+    "Chrome >= 60",
+    "Firefox >= 55",
+    "Safari >= 11.1",
+    "not ie <= 11"
+  ]
+}

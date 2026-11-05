@@ -1,0 +1,179 @@
+const path = require('path');
+
+const catalogPath = path.resolve(__dirname, '../catalog.json');
+const scannerRootsPath = path.resolve(__dirname, '../scanner-roots.json');
+const scannerLogPath = path.resolve(__dirname, '../scanner-log.json');
+const scannerStatePath = path.resolve(__dirname, '../scanner-state.json');
+const scannerRuntimePath = path.resolve(__dirname, '../scanner-runtime.json');
+
+const MAX_SCANNER_RUNS = 30;
+const NODE_ENV = String(process.env.NODE_ENV || 'development').toLowerCase();
+const IS_PRODUCTION = NODE_ENV === 'production';
+const MIN_MOVIE_SIZE = Number(process.env.SCANNER_MIN_MOVIE_SIZE || 104857600); // 100MB
+const MIN_EPISODE_SIZE = Number(process.env.SCANNER_MIN_EPISODE_SIZE || 31457280); // 30MB
+const JUNK_REGEX = /sample|trailer|extras|promo|short|clip|preview|teaser/i;
+const DEFAULT_ADMIN_USERNAME = process.env.ADMIN_USERNAME || (IS_PRODUCTION ? '' : 'admin');
+const DEFAULT_ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || (IS_PRODUCTION ? '' : '');
+
+if (!DEFAULT_ADMIN_PASSWORD_HASH && !IS_PRODUCTION) {
+  console.warn('[store] ADMIN_PASSWORD_HASH not set. Admin login will not work until you set it in your .env file.');
+}
+
+const APP_STATE_DEFAULTS = {
+  scanner_roots: [],
+  scanner_log: { runs: [] },
+  scanner_state: { roots: {} },
+  scanner_runtime: { currentJob: null, queue: [] },
+};
+
+const DEVELOPMENT_SEED_ITEMS = [
+  {
+    id: 1001,
+    title: 'The Journey Begins',
+    type: 'movie',
+    status: 'published',
+    genre: 'Action',
+    year: 2024,
+    language: 'English',
+    poster: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
+    backdrop: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200',
+    rating: 8.2,
+    duration: 142,
+    description: 'An epic adventure film filled with action and mystery.',
+    featured: true,
+    featuredOrder: 10,
+    trendingScore: 95,
+  },
+  {
+    id: 1002,
+    title: 'Heart of Gold',
+    type: 'movie',
+    status: 'published',
+    genre: 'Drama',
+    year: 2023,
+    language: 'English',
+    poster: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=400',
+    backdrop: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=1200',
+    rating: 7.9,
+    duration: 128,
+    description: 'A touching story about love, loss, and redemption.',
+    trendingScore: 84,
+  },
+  {
+    id: 1003,
+    title: 'Laugh Track',
+    type: 'movie',
+    status: 'published',
+    genre: 'Comedy',
+    year: 2024,
+    language: 'English',
+    poster: 'https://images.unsplash.com/photo-1495997622626-f1fbb8e068aa?w=400',
+    backdrop: 'https://images.unsplash.com/photo-1495997622626-f1fbb8e068aa?w=1200',
+    rating: 7.1,
+    duration: 95,
+    description: 'A hilarious comedy about everyday life mishaps.',
+    trendingScore: 71,
+  },
+  {
+    id: 1004,
+    title: 'Midnight Terror',
+    type: 'movie',
+    status: 'published',
+    genre: 'Horror',
+    year: 2024,
+    language: 'English',
+    poster: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
+    backdrop: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200',
+    rating: 7.4,
+    duration: 105,
+    description: 'A chilling horror experience that will keep you on edge.',
+    trendingScore: 77,
+  },
+  {
+    id: 1005,
+    title: 'Love in Paris',
+    type: 'movie',
+    status: 'published',
+    genre: 'Romance',
+    year: 2023,
+    language: 'French',
+    poster: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=400',
+    backdrop: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=1200',
+    rating: 8,
+    duration: 112,
+    description: 'A romantic tale set in the city of love.',
+    trendingScore: 68,
+  },
+  {
+    id: 2001,
+    title: 'Tech Titans',
+    type: 'series',
+    status: 'published',
+    genre: 'Thriller',
+    year: 2024,
+    language: 'English',
+    poster: 'https://images.unsplash.com/photo-1574609644844-fcf46c1e1c2?w=400',
+    backdrop: 'https://images.unsplash.com/photo-1574609644844-fcf46c1e1c2?w=1200',
+    rating: 8.5,
+    description: 'Follow the rise of ambitious tech entrepreneurs in Silicon Valley.',
+    seasons: [
+      { id: 1, number: 1, episodes: Array.from({ length: 12 }, (_, i) => ({ id: i + 1, number: i + 1, title: 'Tech Titans S1 E' + (i + 1) })) },
+      { id: 2, number: 2, episodes: Array.from({ length: 12 }, (_, i) => ({ id: i + 13, number: i + 1, title: 'Tech Titans S2 E' + (i + 1) })) },
+    ],
+    trendingScore: 98,
+  },
+  {
+    id: 2002,
+    title: 'Mystery Island',
+    type: 'series',
+    status: 'published',
+    genre: 'Adventure',
+    year: 2023,
+    language: 'English',
+    poster: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400',
+    backdrop: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200',
+    rating: 8.3,
+    description: 'A group of friends must solve the mysteries of an uncharted island.',
+    seasons: [
+      { id: 1, number: 1, episodes: Array.from({ length: 10 }, (_, i) => ({ id: i + 1, number: i + 1, title: 'Mystery Island S1 E' + (i + 1) })) },
+    ],
+    trendingScore: 86,
+  },
+  {
+    id: 2003,
+    title: 'Legal Minds',
+    type: 'series',
+    status: 'published',
+    genre: 'Drama',
+    year: 2024,
+    language: 'English',
+    poster: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+    backdrop: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200',
+    rating: 8.1,
+    description: 'High-stakes legal battles and personal drama in a prestigious law firm.',
+    seasons: [
+      { id: 1, number: 1, episodes: Array.from({ length: 12 }, (_, i) => ({ id: i + 1, number: i + 1, title: 'Legal Minds S1 E' + (i + 1) })) },
+      { id: 2, number: 2, episodes: Array.from({ length: 12 }, (_, i) => ({ id: i + 13, number: i + 1, title: 'Legal Minds S2 E' + (i + 1) })) },
+      { id: 3, number: 3, episodes: Array.from({ length: 12 }, (_, i) => ({ id: i + 25, number: i + 1, title: 'Legal Minds S3 E' + (i + 1) })) },
+    ],
+    trendingScore: 83,
+  },
+];
+
+module.exports = {
+  catalogPath,
+  scannerRootsPath,
+  scannerLogPath,
+  scannerStatePath,
+  scannerRuntimePath,
+  MAX_SCANNER_RUNS,
+  NODE_ENV,
+  IS_PRODUCTION,
+  MIN_MOVIE_SIZE,
+  MIN_EPISODE_SIZE,
+  JUNK_REGEX,
+  DEFAULT_ADMIN_USERNAME,
+  DEFAULT_ADMIN_PASSWORD_HASH,
+  APP_STATE_DEFAULTS,
+  DEVELOPMENT_SEED_ITEMS,
+};

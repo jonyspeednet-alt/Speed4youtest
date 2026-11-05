@@ -1,0 +1,192 @@
+import apiClient from './apiClient';
+
+function cachedGet(path, params = {}) {
+  return apiClient(`${path}?${new URLSearchParams(params)}`);
+}
+
+function clearAdminCache() {
+  // Now handled globally by React Query (queryClient.invalidateQueries)
+}
+
+export const adminService = {
+  getDashboard: () => cachedGet('/admin/dashboard'),
+  getStats: () => cachedGet('/admin/stats'),
+  getSearchAnalytics: () => cachedGet('/admin/search-analytics'),
+  getScannerRoots: () => cachedGet('/admin/scanner/roots'),
+  getScannerHealth: () => cachedGet('/admin/scanner/health'),
+  getScannerLogs: (limit = 10) => cachedGet('/admin/scanner/logs', { limit }),
+  getCurrentScannerJob: () => apiClient('/admin/scanner/jobs/current'),
+  runScanner: (rootIds = []) => apiClient('/admin/scanner/run', {
+    method: 'POST',
+    body: JSON.stringify({ rootIds }),
+  }).finally(clearAdminCache),
+  stopScanner: () => apiClient('/admin/scanner/stop', { method: 'POST' }).finally(clearAdminCache),
+  clearScannerMetadataCache: () => apiClient('/admin/scanner/cache/clear', { method: 'POST' }).finally(clearAdminCache),
+
+  getDuplicateReview: () => cachedGet('/admin/duplicates/review'),
+  getCatalogDuplicates: (params = {}) => cachedGet('/admin/duplicates/catalog', params),
+  checkDuplicateTitle: (params = {}) => cachedGet('/admin/duplicates/check', params),
+  runDuplicateCleanup: (body = {}) => apiClient('/admin/duplicates/cleanup', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }).finally(clearAdminCache),
+  mergeCatalogDuplicates: (keepId, removeIds) => apiClient('/admin/duplicates/merge', {
+    method: 'POST',
+    body: JSON.stringify({ keepId, removeIds }),
+  }).finally(clearAdminCache),
+  pruneCatalog: () => apiClient('/admin/maintenance/prune', { method: 'POST' }).finally(clearAdminCache),
+  runVacuum: () => apiClient('/admin/maintenance/vacuum', { method: 'POST' }).finally(clearAdminCache),
+  recalculateDuplicateCounts: () => apiClient('/admin/maintenance/recalculate-duplicates', { method: 'POST' }).finally(clearAdminCache),
+  cleanupOrphanedRoots: () => apiClient('/admin/maintenance/cleanup-orphan-roots', { method: 'POST' }).finally(clearAdminCache),
+  getScannerDrafts: (status = 'draft') => cachedGet('/admin/scanner/drafts', { status }),
+
+  // Content management
+  getContent: (params = {}) => cachedGet('/admin/content', { ...params, summary: 'true' }),
+  getContentOrganization: (params = {}) => cachedGet('/admin/content/organization', params),
+  getContentById: (id) => apiClient(`/admin/content/${id}`),
+  createContent: (data) => apiClient('/admin/content', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }).finally(clearAdminCache),
+  updateContent: (id, data) => apiClient(`/admin/content/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }).finally(clearAdminCache),
+  bulkUpdateContent: (ids, changes) => apiClient('/admin/content/bulk-update', {
+    method: 'POST',
+    body: JSON.stringify({ ids, changes }),
+  }).finally(clearAdminCache),
+  deleteContent: (id) => apiClient(`/admin/content/${id}`, { method: 'DELETE' }).finally(clearAdminCache),
+  publishContent: (id) => apiClient(`/admin/content/${id}/publish`, { method: 'POST' }).finally(clearAdminCache),
+  unpublishContent: (id) => apiClient(`/admin/content/${id}/unpublish`, { method: 'POST' }).finally(clearAdminCache),
+  
+  // Movies
+  getMovies: (params = {}) => cachedGet('/admin/movies', { ...params, summary: 'true' }),
+  
+  // Series
+  getSeries: (params = {}) => cachedGet('/admin/series', { ...params, summary: 'true' }),
+  getDbHealth: () => cachedGet('/admin/db/health'),
+  
+  // Media uploads
+  uploadPoster: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient('/admin/upload/poster', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  uploadBanner: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient('/admin/upload/banner', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  importTmdbMetadata: (tmdbId, type = 'movie') => apiClient('/admin/metadata/tmdb', {
+    method: 'POST',
+    body: JSON.stringify({ tmdbId, type }),
+  }).finally(clearAdminCache),
+
+  listAdminUsers: () => apiClient('/admin/users'),
+  createAdminUser: (data) => apiClient('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateAdminUser: (id, data) => apiClient(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAdminUser: (id) => apiClient(`/admin/users/${id}`, { method: 'DELETE' }),
+
+  // Series cleanup — remove episode-level entries incorrectly indexed as standalone series
+  cleanupOrphanSeriesEpisodes: () => apiClient('/admin/series/cleanup-episodes', { method: 'POST' }),
+
+  // Fix series metadata — extract real show title from path and re-enrich via TMDB
+  fixSeriesMetadata: (opts = {}) => apiClient('/admin/series/fix-metadata', {
+    method: 'POST',
+    body: JSON.stringify({ batchSize: opts.batchSize || 5, statusFilter: opts.statusFilter }),
+  }),
+  fixSeriesMetadataDry: () => apiClient('/admin/series/fix-metadata?dry=true', {
+    method: 'POST',
+    body: JSON.stringify({ batchSize: 5 }),
+  }),
+
+  // Fix misconfigured scanner roots (movie roots set as type 'series')
+  fixMisconfiguredRoots: (dry = true) => apiClient(`/admin/maintenance/fix-roots?dry=${dry}`, { method: 'POST' }),
+
+  // Fix published items with missing poster/backdrop/description/year via TMDB
+  fixMissingPosters: (opts = {}) => apiClient('/admin/metadata/fix-missing-posters', {
+    method: 'POST',
+    body: JSON.stringify({ batchSize: opts.batchSize || 10, status: opts.status || 'published' }),
+  }).finally(clearAdminCache),
+
+  // Browse files under a scanner root (for manual content creation)
+  browseRoot: (rootId, path = '') => cachedGet(`/admin/roots/${rootId}/browse`, path ? { path } : {}),
+
+  // Rematch metadata for skipped/failed/not_found items
+  rematchMetadata: (opts = {}) => apiClient('/admin/metadata/rematch', {
+    method: 'POST',
+    body: JSON.stringify({ batchSize: opts.batchSize || 5 }),
+  }).finally(clearAdminCache),
+
+  // Media Fixer — browser-compatibility analyze + transcode
+  analyzeMedia: (input, opts = {}) => apiClient('/admin/media/analyze', {
+    method: 'POST',
+    body: JSON.stringify({
+      input,
+      season: opts.season,
+      episode: opts.episode,
+      allEpisodes: opts.allEpisodes,
+    }),
+  }),
+  startTranscode: (input, opts = {}) => apiClient('/admin/media/transcode', {
+    method: 'POST',
+    body: JSON.stringify({
+      input,
+      preset: opts.preset || 'browser',
+      options: opts.options || {},
+      season: opts.season,
+      episode: opts.episode,
+      allEpisodes: opts.allEpisodes,
+    }),
+  }).finally(clearAdminCache),
+  getTranscodeJobs: ({ activeOnly = false } = {}) => apiClient(`/admin/media/jobs${activeOnly ? '?activeOnly=true' : ''}`),
+  getTranscodeJob: (id) => apiClient(`/admin/media/jobs/${id}`),
+  cancelTranscodeJob: (id) => apiClient(`/admin/media/jobs/${id}/cancel`, { method: 'POST' }),
+  retryTranscodeJob: (id, opts = {}) => apiClient(`/admin/media/jobs/${id}/retry`, {
+    method: 'POST',
+    body: JSON.stringify({ preset: opts.preset, options: opts.options || {} }),
+  }).finally(clearAdminCache),
+  deleteJobBackup: (id) => apiClient(`/admin/media/jobs/${id}/backup`, { method: 'DELETE' }),
+  getBackups: () => apiClient('/admin/media/backups'),
+  deleteAllBackups: () => apiClient('/admin/media/backups', { method: 'DELETE' }),
+
+  // Viewer problem reports
+  getMediaReports: (status = 'open') => apiClient(`/admin/media/reports?status=${status}`),
+  resolveMediaReport: (id, resolved = true) => apiClient(`/admin/media/reports/${id}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ resolved }),
+  }),
+
+  // Media Fixer settings (auto-fix)
+  getMediaSettings: () => apiClient('/admin/media/settings'),
+  saveMediaSettings: (data) => apiClient('/admin/media/settings', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+
+  // Media Fixer library scan
+  getLibraryScan: () => apiClient('/admin/media/scan'),
+  startLibraryScan: (type = 'all') => apiClient('/admin/media/scan/start', {
+    method: 'POST',
+    body: JSON.stringify({ type }),
+  }),
+  cancelLibraryScan: () => apiClient('/admin/media/scan/cancel', { method: 'POST' }),
+  queueScanFindings: (opts = {}) => apiClient('/admin/media/scan/queue', {
+    method: 'POST',
+    body: JSON.stringify({
+      keys: opts.keys,
+      all: opts.all,
+      preset: opts.preset || 'browser',
+      options: opts.options || {},
+    }),
+  }).finally(clearAdminCache),
+};
+
+export default adminService;

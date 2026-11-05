@@ -1,0 +1,54 @@
+import apiClient from './apiClient';
+
+function toQueryString(params = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      searchParams.set(key, String(value));
+    }
+  });
+
+  return searchParams.toString();
+}
+
+export const contentService = {
+  getFeatured: () => apiClient('/content/featured'),
+  getLatest: (limit = 10) => apiClient(`/content/latest?limit=${limit}`),
+  getPopular: (limit = 10) => apiClient(`/content/popular?limit=${limit}`),
+  getTrending: (limit = 10) => apiClient(`/content/trending?limit=${limit}`),
+  // Recommendations: dynamic similarity recommendations based on seed item
+  getRecommendations: (seedContentId, limit = 10) => apiClient(`/content/recommendations?seed=${seedContentId}&limit=${limit}`),
+  // Local trending: geo-subnet localized trending
+  getLocalTrending: (limit = 10) => apiClient(`/content/local-trending?limit=${limit}`),
+  browse: (params) => apiClient(`/content/browse?${toQueryString(params)}`),
+  getHomepage: (limit) => apiClient(`/content/homepage${limit ? `?limit=${limit}` : ''}`),
+  // Query-friendly methods for React Query
+  fetchBrowsePage: async ({ pageParam = 1, ...filters }) => {
+    const params = { ...filters, page: pageParam, limit: 24 };
+    const response = await apiClient(`/content/browse?${toQueryString(params)}`);
+    return {
+      items: response.items || [],
+      nextPage: response.nextPage ?? undefined,
+      total: response.total || 0,
+    };
+  },
+  fetchContent: (endpoint, params = {}) => apiClient(`${endpoint}?${toQueryString(params)}`),
+  fetchLatest: (limit = 10) => apiClient(`/content/latest?limit=${limit}`),
+  fetchPopular: (limit = 10) => apiClient(`/content/popular?limit=${limit}`),
+  fetchTrending: (limit = 10) => apiClient(`/content/trending?limit=${limit}`),
+  // Recommendations: dynamic similarity recommendations based on seed item
+  fetchRecommendations: (seedContentId, limit = 10) => apiClient(`/content/recommendations?seed=${seedContentId}&limit=${limit}`),
+  // Local trending: geo-subnet localized trending
+  fetchLocalTrending: (limit = 10) => apiClient(`/content/local-trending?limit=${limit}`),
+  // Track content view for trending score
+  trackView: (contentId, amount = 1) => apiClient(`/content/${contentId}/view`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount }),
+  }),
+  // Live online user count
+  getOnlineCount: () => apiClient('/content/online-count'),
+};
+
+export default contentService;
