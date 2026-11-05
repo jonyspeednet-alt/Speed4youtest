@@ -1,1 +1,0 @@
-curl -s "https://server2.ftpbd.net/FTP-2/English%20Movies/2026/Michael-2026/Subs/" 2>&1 | grep -oP 'href="\K[^"]*'
