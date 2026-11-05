@@ -20,17 +20,15 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install frontend dependencies
         run: npm ci
-        working-directory: frontend
 
       - name: Build frontend (clean)
         run: |
           rm -rf dist
           npm run build
-        working-directory: frontend
         env:
           VITE_APP_BASE: /
           VITE_ADMIN_ACCESS_KEY: ${{ secrets.ADMIN_ACCESS_KEY }}
@@ -39,15 +37,15 @@ jobs:
         id: frontend_bundle
         run: |
           set -e
-          bundle=$(grep -oE 'index-[a-z0-9]+\.js' frontend/dist/index.html | head -n 1)
+          bundle=$(grep -oE 'index-[a-z0-9]+\.js' dist/index.html | head -n 1)
           if [ -z "$bundle" ]; then
-            echo "Could not find main frontend bundle in frontend/dist/index.html" >&2
+            echo "Could not find main frontend bundle in dist/index.html" >&2
             exit 1
           fi
           echo "bundle=$bundle" >> "$GITHUB_OUTPUT"
           echo "Built frontend main bundle: $bundle"
           echo "=== Dist files ==="
-          ls -la frontend/dist/index.html frontend/dist/assets/index-*.js 2>/dev/null
+          ls -la dist/index.html dist/assets/index-*.js 2>/dev/null
 
       - name: Install backend dependencies (lockfile only)
         run: npm ci
@@ -70,7 +68,7 @@ jobs:
             echo "=== Frontend destination ==="
             ls -la /var/www/html/portal/ 2>/dev/null | head -5 || echo "(empty or missing)"
             echo "=== Build output ==="
-            ls -la /home/speed4you/actions-runner/_work/speed4you/speed4you/frontend/dist/ 2>/dev/null | head -5 || echo "(empty or missing)"
+            ls -la /home/speed4you/actions-runner/_work/speed4you/speed4you/dist/ 2>/dev/null | head -5 || echo "(empty or missing)"
 
       - name: Backup production data files
         uses: appleboy/ssh-action@v1.2.0
@@ -102,9 +100,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
-          source: "frontend/dist/"
+          source: "dist/"
           target: /home/speed4you/portal-frontend-staging
-          strip_components: 2
+          strip_components: 1
           rm: true
 
       - name: Apply frontend to web root

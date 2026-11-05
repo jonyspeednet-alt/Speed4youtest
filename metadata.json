@@ -1,0 +1,6 @@
+{
+  "name": "Speed4You Portal",
+  "description": "Speed4You entertainment portal for streaming movies, TV series, live channels, and managing media catalog with watchlist, progress tracking, and search.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,185 @@
+import { lazy, Suspense, useEffect } from 'react';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+
+const RouteErrorBoundary = lazy(() => import('../components/feedback/ErrorBoundary').then(m => ({ default: m.RouteErrorBoundary })));
+const GlobalErrorBoundary = lazy(() => import('../components/feedback/GlobalErrorBoundary'));
+const MainSiteLayout = lazy(() => import('../layouts/MainSiteLayout'));
+const AdminLayout = lazy(() => import('../layouts/AdminLayout'));
+
+const HomePage = lazy(() => import('../pages/HomePage'));
+const BrowsePage = lazy(() => import('../pages/BrowsePage'));
+const MovieDetailsPage = lazy(() => import('../pages/MovieDetailsPage'));
+const SeriesDetailsPage = lazy(() => import('../pages/SeriesDetailsPage'));
+const VideoPlayerPage = lazy(() => import('../pages/VideoPlayerPage'));
+const AccessPage = lazy(() => import('../pages/AccessPage'));
+const LoginPage = lazy(() => import('../pages/LoginPage'));
+const WatchlistPage = lazy(() => import('../pages/WatchlistPage'));
+const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard'));
+const AddContentPage = lazy(() => import('../pages/admin/AddContentPage'));
+const ContentLibraryPage = lazy(() => import('../pages/admin/ContentLibraryPage'));
+const ScannerPage = lazy(() => import('../pages/admin/ScannerPage'));
+const DuplicatesPage = lazy(() => import('../pages/admin/DuplicatesPage'));
+const UsersPage = lazy(() => import('../pages/admin/UsersPage'));
+const SearchAnalyticsPage = lazy(() => import('../pages/admin/SearchAnalyticsPage'));
+const ContentPreviewPage = lazy(() => import('../pages/admin/ContentPreviewPage'));
+const MediaFixerPage = lazy(() => import('../pages/admin/MediaFixerPage'));
+
+function withRouteFallback(element) {
+  return <Suspense fallback={<div className="catalog-message" role="status">Loading…</div>}>{element}</Suspense>;
+}
+
+function TVRedirect() {
+  useEffect(() => {
+    window.location.replace('http://10.45.45.254/');
+  }, []);
+  return null;
+}
+
+function LayoutSuspense({ children }) {
+  return (
+    <Suspense fallback={
+      <div className="catalog-message" role="status">Loading…</div>
+    }>
+      {children}
+    </Suspense>
+  );
+}
+
+const appBasePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/';
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <LayoutSuspense><MainSiteLayout /></LayoutSuspense>,
+    errorElement: <LayoutSuspense><RouteErrorBoundary /></LayoutSuspense>,
+    children: [
+      {
+        index: true,
+        element: withRouteFallback(<HomePage />, 'home'),
+      },
+      {
+        path: 'browse',
+        element: withRouteFallback(<BrowsePage key="browse" />, 'browse'),
+      },
+      {
+        path: 'movies',
+        element: withRouteFallback(<BrowsePage key="movies" type="movie" />, 'browse'),
+      },
+      {
+        path: 'series',
+        element: withRouteFallback(<BrowsePage key="series" type="series" />, 'browse'),
+      },
+      {
+        path: 'watchlist',
+        element: withRouteFallback(<WatchlistPage />, 'browse'),
+      },
+      {
+        path: 'search',
+        element: <Navigate to="/browse" replace />,
+      },
+      {
+        path: 'movies/:slug',
+        element: withRouteFallback(<MovieDetailsPage />, 'detail'),
+      },
+      {
+        path: 'series/:slug',
+        element: withRouteFallback(<SeriesDetailsPage />, 'detail'),
+      },
+      {
+        path: 'tv',
+        element: <TVRedirect />,
+      },
+      {
+        path: 'access',
+        element: withRouteFallback(<AccessPage />, 'default'),
+      },
+      {
+        path: '*',
+        element: <Navigate to="/" replace />,
+      },
+    ],
+  },
+  {
+    path: '/admin',
+    element: <LayoutSuspense><AdminLayout /></LayoutSuspense>,
+    errorElement: <LayoutSuspense><RouteErrorBoundary /></LayoutSuspense>,
+    children: [
+      {
+        index: true,
+        element: withRouteFallback(<AdminDashboard />, 'default'),
+      },
+      {
+        path: 'content',
+        element: withRouteFallback(<ContentLibraryPage />, 'browse'),
+      },
+      {
+        path: 'content/new',
+        element: withRouteFallback(<AddContentPage />, 'default'),
+      },
+      {
+        path: 'content/:id/edit',
+        element: withRouteFallback(<AddContentPage />, 'default'),
+      },
+      {
+        path: 'content/:id/preview',
+        element: withRouteFallback(<ContentPreviewPage key="admin-preview" />, 'detail'),
+      },
+      {
+        path: 'movies',
+        element: withRouteFallback(<ContentLibraryPage />, 'browse'),
+      },
+      {
+        path: 'series',
+        element: withRouteFallback(<ContentLibraryPage />, 'browse'),
+      },
+      {
+        path: 'scanner',
+        element: withRouteFallback(<ScannerPage />, 'default'),
+      },
+      {
+        path: 'media-fixer',
+        element: withRouteFallback(<MediaFixerPage />, 'default'),
+      },
+      {
+        path: 'duplicates',
+        element: withRouteFallback(<DuplicatesPage />, 'default'),
+      },
+      {
+        path: 'users',
+        element: withRouteFallback(<UsersPage />, 'default'),
+      },
+      {
+        path: 'analytics',
+        element: withRouteFallback(<SearchAnalyticsPage />, 'default'),
+      },
+      {
+        path: '*',
+        element: <Navigate to="/admin/content" replace />,
+      },
+    ],
+  },
+  {
+    path: '/login',
+    element: withRouteFallback(<LoginPage />, 'default'),
+  },
+  {
+    path: '/play/:type/:id',
+    element: withRouteFallback(<VideoPlayerPage />, 'default'),
+  },
+], {
+  basename: appBasePath,
+});
+
+function AppRouter() {
+  return (
+    <Suspense fallback={
+      <div className="catalog-message" role="status">Loading…</div>
+    }>
+      <GlobalErrorBoundary>
+        <RouterProvider router={router} />
+      </GlobalErrorBoundary>
+    </Suspense>
+  );
+}
+
+export default AppRouter;
